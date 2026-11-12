@@ -1,0 +1,19 @@
+export const roleLabels={agency_admin:'Administrateur agence',manager:'Gestionnaire / Comptable',owner:'Propriétaire',tenant:'Locataire',saas_admin:'Super Admin SaaS'};
+export const monthKey=(date=new Date())=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-01`;
+export function createDemo() {
+ const properties=[
+  ['Résidence Les Palmiers','Appartement','Cocody','Riviera 3',250000,8],['Villa Akwaba','Villa','Cocody','Angré 8e tranche',450000,8],['Les Jardins de la Lagune','Appartement','Marcory','Zone 4',350000,10],['Studio Le Baobab','Studio','Bingerville','Adjamé Bingerville',85000,7],['Résidence Éburnée','Appartement','Cocody','Deux Plateaux',200000,8],['Boutique du Marché','Magasin','Yopougon','Niangon',120000,8],['Villa Belle Rive','Villa','Assinie','Assinie Mafia',600000,10],['Bureaux Horizon','Bureau','Plateau','Centre des affaires',300000,8]
+ ].map((p,i)=>({id:`p${i+1}`,name:p[0],type:p[1],city:p[2]==='Assinie'?'Assinie':'Abidjan',district:p[3],address:`${p[2]}, ${p[3]}`,rent:p[4],commission:p[5],owner_id:i<4?'owner-1':'owner-2',occupied:i<6}));
+ const tenants=[['Aïcha Koné','aicha.kone@example.com','+225 07 00 11 22 33'],['Jean-Marc Kouassi','jm.kouassi@example.com','+225 05 00 22 33 44'],['Fatou Traoré','fatou.traore@example.com','+225 01 00 33 44 55'],['Yao N’Guessan','yao.ng@example.com','+225 07 00 44 55 66'],['Mariam Bamba','mariam.b@example.com','+225 05 00 55 66 77'],['Ibrahim Ouattara','ibrahim.o@example.com','+225 01 00 66 77 88']].map((t,i)=>({id:`t${i+1}`,name:t[0],email:t[1],phone:t[2],user_id:i===0?'tenant-1':null}));
+ const now=new Date(); const year=now.getFullYear();
+ const leases=tenants.map((t,i)=>({id:`l${i+1}`,property_id:properties[i].id,tenant_id:t.id,start_date:`${year}-01-01`,end_date:`${year+1}-12-31`,rent:properties[i].rent,deposit:properties[i].rent*2,status:'active'}));
+ const invoices=[];
+ for(let m=5;m>=0;m--) {const d=new Date(now.getFullYear(),now.getMonth()-m,1);const period=monthKey(d);leases.forEach((l,i)=>{const paid=m>0||i<3; invoices.push({id:`i${m}-${i}`,lease_id:l.id,period,due_date:period.slice(0,8)+'05',amount:l.rent,commission:properties[i].commission,paid_at:paid?period.slice(0,8)+String(2+i%3).padStart(2,'0')+'T10:30:00Z':null,reference:`LI-DEMO-${d.getMonth()+1}-${i+1}`});});}
+ return {company:{name:'Akwaba Immobilier',plan:'Professionnel'},properties,tenants,leases,invoices,documents:[],tickets:[{id:'ticket-1',property_id:'p1',title:'Fuite sous l’évier de la cuisine',description:'Une fuite apparaît au niveau du siphon. Intervention à prévoir.',priority:'urgent',status:'open',created_by:'tenant-1',created_at:new Date().toISOString()},{id:'ticket-2',property_id:'p3',title:'Climatisation du séjour',description:'L’appareil ne refroidit plus correctement.',priority:'normal',status:'in_progress',created_by:'admin-1',created_at:new Date().toISOString()}],users:[{id:'admin-1',name:'Nadia Kouamé',email:'nadia@example.com',role:'agency_admin'},{id:'owner-1',name:'Paul N’Dri',email:'paul@example.com',role:'owner'},{id:'owner-2',name:'Aminata Diabaté',email:'aminata@example.com',role:'owner'},{id:'tenant-1',name:'Aïcha Koné',email:'aicha.kone@example.com',role:'tenant'}]};
+}
+export function demoForRole(data,role) {
+ if(['agency_admin','manager','saas_admin'].includes(role)) return data;
+ const properties=data.properties.filter(p=>role==='owner'?p.owner_id==='owner-1':data.leases.some(l=>l.property_id===p.id&&data.tenants.find(t=>t.id===l.tenant_id)?.user_id==='tenant-1'));
+ const leases=data.leases.filter(l=>properties.some(p=>p.id===l.property_id));
+ return {...data,properties,leases,tenants:data.tenants.filter(t=>leases.some(l=>l.tenant_id===t.id)),invoices:data.invoices.filter(i=>leases.some(l=>l.id===i.lease_id)),tickets:data.tickets.filter(t=>properties.some(p=>p.id===t.property_id)&&(role!=='tenant'||t.created_by==='tenant-1')),documents:data.documents.filter(d=>leases.some(l=>l.id===d.lease_id)),users:[]};
+}
